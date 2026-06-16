@@ -4,18 +4,23 @@ file_path = Path(__file__).resolve()
 project_root = file_path.parent.parent
 
 sys.path.append(str(project_root))
-from fastapi import FastAPI, Body
+from fastapi import FastAPI
 import pandas as pd
 from src.predict import load_model, predict
+from pydantic import BaseModel
 
 
-
-""" POST /predict
-input: raw house features
-output: predicted price """
 
 
 app = FastAPI()
+model = load_model()
+
+
+class HouseFeatures(BaseModel):
+    input_data: dict
+
+
+
 
 @app.get("/")
 def read_root():
@@ -23,14 +28,15 @@ def read_root():
 
 
 @app.post("/predict")
-async def predict_endpoint(data: dict = Body(...)):
-    X = pd.DataFrame([data])
-    model = load_model()
+async def predict_endpoint(data: HouseFeatures):
+    input_data =  data.input_data
+    X = pd.DataFrame([input_data])
+    
+    # Retrieve the model from request.state
     prediction = predict(model, X)
     final_result = int(prediction[0])
-    return {"prediction": final_result}
-# receive JSON
-# convert JSON to pandas DataFrame
-# load model
-# predict
-# return predicted_price
+    return {
+        "predicted_price": final_result,
+        "currency": "USD",
+        "model": "ridge_regression"
+    }
